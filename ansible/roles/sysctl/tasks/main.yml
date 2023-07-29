@@ -1,0 +1,19 @@
+---
+- name: Add sysctl config
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.content }}"
+    state: present
+    reload: true
+  with_items:
+    - { name: 'kernel.dmesg_restrict', content: '1' }
+    - { name: 'net.ipv4.ip_forward', content: '0' }
+    - { name: 'net.ipv4.conf.all.accept_local', content: '0' }
+    - { name: 'net.ipv6.conf.all.accept_local', content: '0' }
+    - { name: 'net.ipv4.conf.all.accept_source_route', content: '0' }
+    - { name: 'net.ipv6.conf.all.accept_source_route', content: '0' }
+    - { name: 'fs.protected_fifos', content: '2' }
+    - { name: 'dev.tty.ldisc_autoload', content: '0' }
+    - { name: 'kernel.kptr_restrict', content: '2' }
+    - { name: 'kernel.unprivileged_bpf_disabled', content: '1' }
+    - { name: 'net.core.bpf_jit_harden', content: '2' }

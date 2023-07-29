@@ -1,0 +1,35 @@
+-w /sbin/insmod -p x -k insmod_execute
+-w /sbin/modprobe -p x -k modprobe_execute
+-w /sbin/rmmod -p x -k rmmod_execute
+-w /bin/kmod -p x -k kmod_execute
+
+-w /etc/ -p wa -k etc_change
+-w /dev/shm/ -p wa -k share_memory_change
+
+-w /root/ -p wa -k root_home_change
+-w /etc/passwd -p wa -k passwd_change
+-w /etc/shadow -p rwa -k shadow_change
+-w /etc/group -p wa -k group_change
+-w /etc/security -k security_change
+-w /etc/audit/ -p rwa -k etc_audit_change
+-w /etc/sudoers -p wa -k sudoers_change
+-w /etc/sudoers.d -p wa -k sudoers_change
+
+-a exit,always -F arch=b64 -S mount -S umount2 -k partition_mount
+
+-a exit,always -F arch=b64 -S ioperm -S modify_ldt -k ioperm_modify_ldt
+
+-a exit,always -F arch=b64 -S get_kernel_syms -S ptrace -k get_kernel_syms
+
+-a exit,always -F arch=b64 -S unlink -S rmdir -S rename -k unlink_rmdir
+-a exit,always -F arch=b64 -S creat -S open -S openat -F exit=-EACCES -k creat_openat
+-a exit,always -F arch=b64 -S truncate -S ftruncate -F exit=-EACCES -k truncate
+
+-a exit,always -F arch=b64 -S init_module -S delete_module -k init_delete_module
+-a exit,always -F arch=b64 -S finit_module -k finit_module -k finit
+
+-a exit,always -F arch=b64 -S process_vm_readv,process_vm_write,ptrace -k debugging
+-a exit,always -F arch=b32 -S process_vm_readv,process_vm_write,ptrace -k debugging
+
+-e 2
+-f 2

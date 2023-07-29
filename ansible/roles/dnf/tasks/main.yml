@@ -1,0 +1,30 @@
+---
+- name: Upgrade all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+
+- name: Install epel
+  ansible.builtin.dnf:
+    name: "epel-release"
+    state: "latest"
+
+- name: Install dnf-automatic
+  ansible.builtin.dnf:
+    name: dnf-automatic
+    state: latest
+  notify:
+    - Start dnf-automatic
+    - Enable dnf-automatic
+
+- name: Enable update install
+  ansible.builtin.lineinfile:
+    path: '/etc/dnf/automatic.conf'
+    regexp: '^apply_updates'
+    line: 'apply_updates = yes'
+
+- name: Enable automatic reboot
+  ansible.builtin.lineinfile:
+    dest: '/etc/dnf/automatic.conf'
+    insertafter: '[commands]'
+    line: 'reboot = when-needed'

@@ -1,0 +1,10 @@
+---
+- name: Start auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+
+- name: Enable auditd
+  ansible.builtin.systemd:
+    name: auditd
+    enabled: true

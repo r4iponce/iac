@@ -1,0 +1,14 @@
+---
+- name: Install audit
+  ansible.builtin.dnf:
+    name: audit
+    state: latest
+  notify:
+    - Start auditd
+    - Enable auditd
+
+- name: Add rules
+  ansible.builtin.copy:
+    src: 'custom.rules'
+    dest: '/etc/audit/rules.d/custom.rules'
+    mode: "0640"

@@ -1,0 +1,26 @@
+---
+- name: Install unbound
+  ansible.builtin.dnf:
+    name: '{{ item }}'
+    state: latest
+  with_items:
+    - unbound
+  notify:
+    - Enable unbound
+    - Restart unbound
+
+- name: Configure unbound
+  ansible.builtin.copy:
+    src: 'unbound.conf'
+    dest: '/etc/unbound/unbound.conf'
+    mode: "0440"
+    owner: "unbound"
+  notify:
+    - Restart unbound
+
+- name: Allow DNS
+  ansible.posix.firewalld:
+    service: "dns"
+    permanent: true
+    state: "enabled"
+  notify: Restart firewalld

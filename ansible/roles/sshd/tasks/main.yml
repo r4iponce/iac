@@ -1,0 +1,14 @@
+---
+- name: Configure sshd
+  ansible.builtin.copy:
+    src: "sshd_config"
+    dest: "/etc/ssh/sshd_config"
+    mode: "0640"
+  notify: Restart sshd
+
+- name: Allow ssh
+  ansible.posix.firewalld:
+    service: "ssh"
+    permanent: true
+    state: "enabled"
+  notify: Restart firewalld
