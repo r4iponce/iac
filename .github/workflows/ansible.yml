@@ -1,0 +1,24 @@
+---
+name: Ansible Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ansible ansible-lint
+    - name: Lint Ansible
+      run: |
+        cd ansible
+        ansible-lint
