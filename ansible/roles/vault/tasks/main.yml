@@ -1,0 +1,174 @@
+---
+- name: Import hashicorp gpg key
+  ansible.builtin.rpm_key:
+    state: "present"
+    key: "https://rpm.releases.hashicorp.com/gpg"
+
+- name: Add hashicorp repo
+  ansible.builtin.get_url:
+    url: "https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo"
+    dest: "/etc/yum.repos.d/hashicorp.repo"
+    owner: "root"
+    group: "root"
+    mode: "0655"
+
+- name: Install vault
+  ansible.builtin.dnf:
+    name: "vault"
+    state: "latest"
+  notify:
+    - Enable vault
+    - Restart vault
+
+- name: Start vault
+  ansible.builtin.systemd:
+    name: vault
+    state: started
+
+- name: Copy config
+  ansible.builtin.copy:
+    src: "vault.hcl"
+    dest: "/etc/vault.d/vault.hcl"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - Restart vault
+
+- name: Copy certificate
+  ansible.builtin.copy:
+    src: "../../../pki/vault.r4.pm-fulllchain.cert"
+    dest: "/opt/vault/tls/tls.crt"
+    owner: "vault"
+    group: "vault"
+    mode: "0600"
+  notify:
+    - Restart vault
+
+- name: Copy certificate
+  ansible.builtin.copy:
+    src: "../../../pki/vault.r4.pm.key"
+    dest: "/opt/vault/tls/tls.key"
+    owner: "vault"
+    group: "vault"
+    mode: "0600"
+  notify:
+    - Restart vault
+
+- name: Init vault
+  ansible.builtin.command: "vault operator init -tls-skip-verify -format=json"
+  register: vault_init
+
+- name: Parse vault init
+  ansible.builtin.set_fact:
+    parsed_vault_init: "{{ vault_init.stdout | from_json }}"
+
+- name: Save output
+  ansible.builtin.copy:
+    content: "{{ parsed_vault_init }}"
+    dest: "/tmp/parsed_vault_init.json"
+    owner: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Unseal
+  ansible.builtin.command: "vault operator unseal -tls-skip-verify {{ key }}"
+  with_items: "{{ parsed_vault_init.unseal_keys_hex[:3] }}"
+  loop_control:
+    loop_var: key
+
+- name: "Create vault PKI"
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/sys/mounts/pki"
+    method: POST
+    return_content: true
+    body_format: json
+    body: '{"path":"pki","type":"pki","generate_signing_key":true,"config":{"max_lease_ttl":"3650d","id":"pki"}}'
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+
+- name: "Import signing key"
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/pki/config/ca"
+    method: POST
+    return_content: true
+    body_format: json
+    body: "{{ lookup('ansible.builtin.template', 'data.json.j2') }}"
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json  
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+
+- name: Configure aia path
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/pki/config/cluster"
+    method: POST
+    return_content: true
+    body_format: json
+    body: "{{ lookup('ansible.builtin.file', 'cluster.json') }}"
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json  
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+
+- name: Enable acme
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/pki/config/acme"
+    method: POST
+    return_content: true
+    body_format: json
+    body: "{{ lookup('ansible.builtin.file', 'acme.json') }}"
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json  
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+
+- name: Set urls
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/pki/config/urls"
+    method: POST
+    return_content: true
+    body_format: json
+    body: "{{ lookup('ansible.builtin.file', 'urls.json') }}"
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json  
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+
+- name: Create pki policy
+  ansible.builtin.uri:
+    url: "https://localhost:8200/v1/pki/roles/r4"
+    method: POST
+    return_content: true
+    body_format: json
+    body: "{{ lookup('ansible.builtin.file', 'policies.json') }}"
+    status_code:
+      - 200
+      - 204
+    headers:
+      Content-Type: application/json  
+      X-Vault-Token: "{{ parsed_vault_init.root_token }}"
+    validate_certs: false
+    
+- name: Open firewall
+  ansible.posix.firewalld:
+    port: "8200/tcp"
+    permanent: true
+    state: "enabled"
+  notify: Restart firewalld

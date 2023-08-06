@@ -1,0 +1,100 @@
+---
+- name: Generate certificate authority
+  hosts: localhost
+  tasks:
+    - name: Generate cert authority OpenSSL private key
+      community.crypto.openssl_privatekey:
+        path: "../pki/r4.key"
+        passphrase: "{{ ca_passphrase }}"
+        cipher: "auto"
+
+    - name: Generate CA csr
+      community.crypto.openssl_csr:
+        path: "../pki/r4.csr"
+        privatekey_path: "../pki/r4.key"
+        privatekey_passphrase: "{{ ca_passphrase }}"
+        organization_name: "R4"
+        email_address: "{{ admin_email }}"
+        common_name: "R4"
+        use_common_name_for_san: false
+        basic_constraints:
+          - "CA:TRUE"
+        basic_constraints_critical: true
+        key_usage:
+          - "keyCertSign"
+        key_usage_critical: true
+
+    - name: Generate CA certificate
+      community.crypto.x509_certificate:
+        path: "../pki/r4.cert"
+        csr_path: "../pki/r4.csr"
+        provider: "selfsigned"
+        privatekey_path: "../pki/r4.key"
+        privatekey_passphrase: "{{ ca_passphrase }}"
+
+    - name: Generate intermediate key
+      community.crypto.openssl_privatekey:
+        path: "../pki/intermediate.key"
+        passphrase: "{{ ca_passphrase }}"
+        cipher: "auto"
+
+    - name: Generate intermediate csr
+      community.crypto.openssl_csr:
+        path: "../pki/intermediate.csr"
+        privatekey_path: "../pki/intermediate.key"
+        privatekey_passphrase: "{{ ca_passphrase }}"
+        organization_name: "R4 vault intermediate certificates"
+        common_name: "vault.R4"
+        use_common_name_for_san: false
+        basic_constraints:
+          - "CA:TRUE"
+        basic_constraints_critical: true
+        key_usage:
+          - "keyCertSign"
+          - "cRLSign"
+        key_usage_critical: true
+
+    - name: Generate intermediate certificate
+      community.crypto.x509_certificate:
+        path: "../pki/intermediate.cert"
+        csr_path: "../pki/intermediate.csr"
+        provider: "ownca"
+        ownca_path: "../pki/r4.cert"
+        ownca_privatekey_path: "../pki/r4.key"
+        ownca_privatekey_passphrase: "{{ ca_passphrase }}"
+        privatekey_path: "../pki/r4.key"
+        privatekey_passphrase: "{{ ca_passphrase }}"
+
+    - name: Generate vault key
+      community.crypto.openssl_privatekey:
+        path: "../pki/vault.r4.pm.key"
+
+    - name: Generate vault signing request
+      community.crypto.openssl_csr:
+        path: "../pki/vault.r4.pm.csr"
+        privatekey_path: "../pki/vault.r4.pm.key"
+        common_name: "vault.r4.pm"
+
+    - name: Generate vault certificate
+      community.crypto.x509_certificate:
+        path: "../pki/vault.r4.pm.cert"
+        ownca_path: "../pki/intermediate.cert"
+        ownca_privatekey_path: "../pki/intermediate.key"
+        ownca_privatekey_passphrase: "{{ ca_passphrase }}"
+        csr_path: "../pki/vault.r4.pm.csr"
+        provider: "ownca"
+
+    - name: Create vault fullchain
+      community.crypto.certificate_complete_chain:
+        input_chain: "{{ lookup('file', '../pki/vault.r4.pm.cert') }}"
+        intermediate_certificates:
+          - "../pki/intermediate.cert"
+        root_certificates:
+          - "../pki/r4.cert"
+      register: vault_fullchain
+
+    - name: Write vault fullchain
+      ansible.builtin.copy:
+        content: "{{ ''.join(vault_fullchain.complete_chain) }}"
+        dest: "../pki/vault.r4.pm-fulllchain.cert"
+        mode: "0644"

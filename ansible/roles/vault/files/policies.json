@@ -1,0 +1,7 @@
+{
+  "allowed_domains": "r4.pm",
+  "allow_subdomains": true,
+  "key_type": "rsa",
+  "key_bits": 4096,
+  "organization": "R4"
+  }

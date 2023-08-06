@@ -1,0 +1,4 @@
+---
+vault_datas:
+    data:
+      pem_bundle: "{{ lookup('ansible.builtin.file', 'pki/r4.cert') }}\n{{ lookup('ansible.builtin.file', 'pki/intermediate.cert') }}\n{{ lookup('ansible.builtin.file', 'pki/intermediate.key') }}"

@@ -1,0 +1,3 @@
+{ "path": "https://vault.r4.pm:8200/v1/pki",
+  "aia_path": "http://vault.r4.pm:8200/v1/pki" 
+}

@@ -1,1 +1,3 @@
 venv/
+pki/
+ansible/group_vars/all/secrets

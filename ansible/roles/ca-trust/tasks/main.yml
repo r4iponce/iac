@@ -1,0 +1,6 @@
+---
+- name: Copy CA certificate
+  ansible.builtin.copy:
+    src: "../../../pki/r4.cert"
+    dest: "/etc/pki/ca-trust/source/anchors/r4.cert"
+  notify: "Update CA trust"

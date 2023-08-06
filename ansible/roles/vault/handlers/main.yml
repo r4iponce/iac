@@ -1,0 +1,15 @@
+---
+- name: Restart vault
+  ansible.builtin.systemd:
+    name: vault
+    state: restarted
+
+- name: Enable vault
+  ansible.builtin.systemd:
+    name: vault
+    enabled: true
+
+- name: Restart firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: restarted
